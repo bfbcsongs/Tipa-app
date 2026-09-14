@@ -4,89 +4,73 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PWA Chordify Lab</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background-color: #020617; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; padding: 16px; min-height: 100vh; }
-    .container { max-width: 440px; margin: 0 auto; }
-    
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .title { font-size: 1rem; font-weight: 700; color: #818cf8; }
-    .badge { font-size: 0.65rem; background: #1e1b4b; color: #a5b4fc; border: 1px solid #3730a3; padding: 2px 8px; border-radius: 99px; font-family: monospace; }
-    
-    .card { background: #0f172a; border: 1px solid #1e293b; padding: 12px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); position: relative; }
-    .label { font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px; display: block; }
-    
-    .input-group { display: flex; gap: 8px; }
-    input[type="text"] { flex: 1; background: #020617; border: 1px solid #1e293b; color: #fff; padding: 8px 12px; font-size: 0.8rem; border-radius: 8px; outline: none; }
-    input[type="text"]:focus { border-color: #6366f1; }
-    
-    .btn-primary { background: #4f46e5; color: #fff; font-weight: 700; font-size: 0.8rem; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
-    .btn-secondary { background: #0f172a; border: 1px solid #1e293b; color: #cbd5e1; font-size: 0.75rem; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
-    
-    .toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
-    
-    .suggestions-box { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; max-height: 180px; overflow-y: auto; z-index: 50; }
-    .suggestion-item { padding: 10px 12px; font-size: 0.8rem; border-bottom: 1px solid #1e293b; cursor: pointer; color: #cbd5e1; }
-    .suggestion-item:hover { background: #4f46e5; color: #fff; }
-    
-    .hidden { display: none !important; }
-    
-    .results-box { margin-top: 10px; }
-    .video-item { background: #020617; border: 1px solid #1e293b; padding: 8px; border-radius: 8px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-    .video-title { font-size: 0.75rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
-    .video-author { font-size: 0.65rem; color: #94a3b8; }
-    .play-badge { font-size: 0.7rem; color: #818cf8; font-weight: 700; background: rgba(99, 102, 241, 0.1); padding: 4px 8px; border-radius: 4px; }
-    
-    .player-controls { display: flex; justify-content: space-between; align-items: center; background: #020617; border: 1px solid #1e293b; padding: 8px; border-radius: 8px; margin-top: 8px; font-size: 0.75rem; }
-    .ctrl-group { display: flex; align-items: center; gap: 6px; }
-    .ctrl-btn { background: #1e293b; border: none; color: #fff; font-weight: 700; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; }
-    
-    .chord-block { display: inline-block; font-weight: 700; font-size: 0.85rem; color: #818cf8; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); padding: 2px 6px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px; }
-    .canvas { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; min-height: 250px; }
-    .empty-state { text-align: center; color: #64748b; padding: 40px 0; font-size: 0.8rem; }
+    body { background-color: #0f172a; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .chord-block {
+      display: inline-block; font-weight: 700; font-size: 0.85rem; color: #818cf8;
+      background-color: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 2px 6px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px; cursor: pointer;
+    }
   </style>
 </head>
-<body>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-12">
 
-  <div class="container">
+  <div class="max-w-md mx-auto p-4 space-y-4">
     
-    <div class="header">
-      <div class="title">🎸 PWA Chordify Lab</div>
-      <div class="badge">DEV LAB</div>
+    <!-- Header -->
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <h1 class="text-base font-bold text-indigo-400 flex items-center gap-2">
+        <i class="fa-solid fa-guitar"></i> PWA Chordify Lab
+      </h1>
+      <span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full font-mono">BFBC SYNC</span>
     </div>
 
-    <!-- Search Section -->
-    <div class="card">
-      <span class="label">Connect YouTube Track</span>
-      <div class="input-group">
+    <!-- Search / URL Input Card -->
+    <div class="bg-slate-800 border border-slate-700/80 p-3.5 rounded-2xl shadow-lg relative space-y-2">
+      <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+        <i class="fa-brands fa-youtube text-red-500 text-sm"></i> YouTube Video Sync
+      </label>
+      <div class="flex gap-2">
         <input 
           type="text" 
           id="yt-search-input" 
-          placeholder="Type song title (e.g. Pusong Basag)..." 
+          placeholder="Paste YouTube Link or Type Title..." 
+          class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 shadow-inner"
           oninput="handleSearchSuggestions()"
-          onkeyup="if(event.key==='Enter') searchYouTubeDirect()"
+          onkeyup="if(event.key==='Enter') processMediaInput()"
           autocomplete="off"
         />
-        <button onclick="searchYouTubeDirect()" class="btn-primary">Search</button>
+        <button 
+          onclick="processMediaInput()" 
+          class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-md flex items-center gap-1 cursor-pointer">
+          <span>Load</span>
+        </button>
       </div>
 
-      <div id="yt-suggestions" class="suggestions-box hidden"></div>
-      <div id="yt-video-results" class="results-box hidden"></div>
+      <!-- Live Search Suggestions -->
+      <div id="yt-suggestions" class="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl hidden z-50 max-h-48 overflow-y-auto"></div>
     </div>
 
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <button onclick="loadDemoSong()" class="btn-secondary">✨ Load Demo Track</button>
-      <button onclick="clearCanvas()" class="btn-secondary">🔄 Reset Sheet</button>
+    <!-- Action Toolbar -->
+    <div class="flex gap-2">
+      <button onclick="loadDemoSong()" class="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer">
+        <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Load Demo Track
+      </button>
+      <button onclick="clearCanvas()" class="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer">
+        <i class="fa-solid fa-rotate-left text-slate-400"></i> Reset Sheet
+      </button>
     </div>
 
-    <!-- Audio Player Container -->
-    <div id="yt-player-container" class="card hidden"></div>
+    <!-- Dynamic Audio Player -->
+    <div id="yt-player-container" class="hidden"></div>
 
-    <!-- Chord Canvas -->
-    <div id="chord-canvas" class="canvas">
-      <div class="empty-state">
-        <p>Type a song title above or tap <strong>Load Demo Track</strong>!</p>
+    <!-- Interactive Sheet Container -->
+    <div id="chord-canvas" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 min-h-[300px] shadow-lg">
+      <div class="text-center py-12 text-slate-500">
+        <i class="fa-solid fa-music text-3xl mb-2 block text-slate-600"></i>
+        <p class="text-xs">Paste a YouTube URL or tap <strong>Load Demo Track</strong>!</p>
       </div>
     </div>
 
