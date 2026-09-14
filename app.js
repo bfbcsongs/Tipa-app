@@ -1,6 +1,6 @@
+let player = null;
 let currentKeyShift = 0;
 let scrollInterval = null;
-let suggestionDebounce = null;
 const chromaticScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const demoSongData = {
@@ -14,121 +14,50 @@ const demoSongData = {
   ]
 };
 
-// 1. LIVE SUGGESTIONS
-function handleSearchSuggestions() {
-  clearTimeout(suggestionDebounce);
-  const input = document.getElementById('yt-search-input');
-  const suggestionsBox = document.getElementById('yt-suggestions');
-
-  if (!input || !suggestionsBox) return;
-  const query = input.value.trim();
-
-  // Huwag mag-suggest kapag direct link ang in-input
-  if (query.length < 2 || query.includes('http://') || query.includes('https://')) {
-    suggestionsBox.classList.add('hidden');
-    return;
-  }
-
-  suggestionDebounce = setTimeout(() => {
-    const oldScript = document.getElementById('jsonp-suggest');
-    if (oldScript) oldScript.remove();
-
-    window.suggestCallback = function(data) {
-      if (data && data[1] && data[1].length > 0) {
-        let html = '';
-        data[1].slice(0, 5).forEach(item => {
-          const text = item[0];
-          html += `<div onclick="selectSuggestion('${text.replace(/'/g, "\\'")}')" class="px-3 py-2 text-xs text-slate-200 hover:bg-indigo-600 hover:text-white cursor-pointer border-b border-slate-700/50 last:border-none flex items-center gap-2">
-            <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-400"></i> ${text}
-          </div>`;
-        });
-        suggestionsBox.innerHTML = html;
-        suggestionsBox.classList.remove('hidden');
-      } else {
-        suggestionsBox.classList.add('hidden');
-      }
-    };
-
-    const script = document.createElement('script');
-    script.id = 'jsonp-suggest';
-    script.src = `https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(query)}&jsonp=suggestCallback`;
-    document.body.appendChild(script);
-  }, 200);
+// YouTube API Ready Callback
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player('yt-player', {
+    height: '100%',
+    width: '100%',
+    videoId: '',
+    playerVars: {
+      'playsinline': 1,
+      'rel': 0
+    }
+  });
 }
 
-function selectSuggestion(text) {
-  const input = document.getElementById('yt-search-input');
-  const suggestionsBox = document.getElementById('yt-suggestions');
-  if (input) input.value = text;
-  if (suggestionsBox) suggestionsBox.classList.add('hidden');
-  processMediaInput();
-}
-
-// 2. YOUTUBE VIDEO ID EXTRACTOR & EMBED ENGINE
-function extractYouTubeId(urlOrText) {
-  if (!urlOrText) return null;
+function extractYouTubeId(urlOrId) {
+  if (!urlOrId) return null;
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-  const match = urlOrText.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
+  const match = urlOrId.trim().match(regExp);
+  return (match && match[2].length === 11) ? match[2] : urlOrId.trim();
 }
 
-function processMediaInput() {
-  const inputElem = document.getElementById('yt-search-input');
-  const suggestionsBox = document.getElementById('yt-suggestions');
-  if (suggestionsBox) suggestionsBox.classList.add('hidden');
-  if (!inputElem) return;
+function loadYouTubeVideo() {
+  const input = document.getElementById('yt-url-input');
+  if (!input || !input.value.trim()) return;
 
-  const rawInput = inputElem.value.trim();
-  if (!rawInput) return;
+  const videoId = extractYouTubeId(input.value);
+  if (!videoId) return;
 
-  const videoId = extractYouTubeId(rawInput);
+  document.getElementById('player-wrapper').classList.remove('hidden');
 
-  if (videoId) {
-    // Kapag Direct Link o Direct Video ID
-    renderEmbedPlayer(videoId);
+  if (player && typeof player.loadVideoById === 'function') {
+    player.loadVideoById(videoId);
   } else {
-    // Kapag Title Search (Gumamit ng Direct Search Query Format)
-    const searchEmbedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(rawInput)}`;
-    renderPlayerIframe(searchEmbedUrl);
+    // Retry initialization if API is still loading
+    setTimeout(() => {
+      if (player && typeof player.loadVideoById === 'function') {
+        player.loadVideoById(videoId);
+      }
+    }, 500);
   }
 }
 
-function renderEmbedPlayer(videoId) {
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
-  renderPlayerIframe(embedUrl);
-}
-
-function renderPlayerIframe(embedUrl) {
-  const container = document.getElementById('yt-player-container');
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-3 shadow-xl space-y-3">
-      <div class="overflow-hidden rounded-xl h-[120px] w-full bg-black border border-slate-900">
-        <iframe width="100%" height="120" src="${embedUrl}" title="YouTube Player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-      </div>
-      <div class="flex items-center justify-between bg-slate-900 p-2.5 rounded-xl border border-slate-700/80 text-xs">
-        <div class="flex items-center gap-1.5">
-          <span class="text-[10px] text-slate-400 font-bold uppercase">Key:</span>
-          <button onclick="transpose(-1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 font-bold rounded-lg text-white border border-slate-700">-</button>
-          <span id="key-shift-indicator" class="font-mono font-bold text-indigo-400 px-1">0</span>
-          <button onclick="transpose(1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 font-bold rounded-lg text-white border border-slate-700">+</button>
-        </div>
-        <div class="flex items-center gap-2">
-          <button id="scroll-toggle-btn" onclick="toggleAutoScroll()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg font-bold text-[11px] transition">
-            <span id="scroll-btn-text">Scroll</span>
-          </button>
-          <input type="range" id="scroll-speed" min="1" max="10" value="3" class="w-14 h-1 bg-slate-700 appearance-none rounded accent-indigo-500" />
-        </div>
-      </div>
-    </div>`;
-
-  container.classList.remove('hidden');
-}
-
-// 3. DEMO TRACK & RENDERER
 function loadDemoSong() {
-  renderEmbedPlayer("gWW2a3B46X0"); // Hillsong - Still Official Video ID
+  document.getElementById('yt-url-input').value = 'https://www.youtube.com/watch?v=gWW2a3B46X0';
+  loadYouTubeVideo();
   renderChordSheet(demoSongData);
 }
 
@@ -149,7 +78,6 @@ function renderChordSheet(song) {
   canvas.innerHTML = html;
 }
 
-// 4. TRANSPOSER LOGIC
 function transpose(semitones) {
   currentKeyShift += semitones;
   const indicator = document.getElementById('key-shift-indicator');
@@ -167,7 +95,6 @@ function transposeChord(chord, semitones) {
   });
 }
 
-// 5. AUTO-SCROLL LOGIC
 function toggleAutoScroll() {
   const btnText = document.getElementById('scroll-btn-text');
   if (scrollInterval) {
@@ -184,14 +111,14 @@ function toggleAutoScroll() {
   }
 }
 
-function clearCanvas() {
+function resetApp() {
   if (scrollInterval) clearInterval(scrollInterval);
-  currentKeyShift = 0;
-  const playerContainer = document.getElementById('yt-player-container');
-  if (playerContainer) playerContainer.classList.add('hidden');
-  
-  const canvas = document.getElementById('chord-canvas');
-  if (canvas) {
-    canvas.innerHTML = `<div class="text-center py-12 text-slate-500"><i class="fa-solid fa-music text-3xl mb-2 block text-slate-600"></i><p class="text-xs">Paste a YouTube URL or tap <strong>Load Demo Track</strong>!</p></div>`;
-  }
+  if (player && typeof player.stopVideo === 'function') player.stopVideo();
+  document.getElementById('player-wrapper').classList.add('hidden');
+  document.getElementById('yt-url-input').value = '';
+  document.getElementById('chord-canvas').innerHTML = `
+    <div class="text-center py-12 text-slate-500">
+      <i class="fa-solid fa-music text-3xl mb-2 block text-slate-600"></i>
+      <p class="text-xs">Paste a YouTube link above to sync video & chords.</p>
+    </div>`;
 }
