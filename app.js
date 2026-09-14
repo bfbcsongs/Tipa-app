@@ -1,7 +1,3 @@
-// ==========================================
-// PWA CHORDIFY LAB - MULTI-FALLBACK SEARCH
-// ==========================================
-
 let currentKeyShift = 0;
 let scrollInterval = null;
 let suggestionDebounce = null;
@@ -19,7 +15,6 @@ const demoSongData = {
   ]
 };
 
-// 1. LIVE WORD SUGGESTIONS
 function handleSearchSuggestions() {
   clearTimeout(suggestionDebounce);
   const input = document.getElementById('yt-search-input');
@@ -42,9 +37,7 @@ function handleSearchSuggestions() {
         let html = '';
         data[1].slice(0, 5).forEach(item => {
           const text = item[0];
-          html += `<div onclick="selectSuggestion('${text.replace(/'/g, "\\'")}')" class="px-3 py-2 text-xs text-slate-200 hover:bg-indigo-600 hover:text-white cursor-pointer border-b border-slate-800/50 last:border-none flex items-center gap-2">
-            <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-500"></i> ${text}
-          </div>`;
+          html += `<div onclick="selectSuggestion('${text.replace(/'/g, "\\'")}')" class="suggestion-item">🔍 ${text}</div>`;
         });
         suggestionsBox.innerHTML = html;
         suggestionsBox.classList.remove('hidden');
@@ -68,7 +61,6 @@ function selectSuggestion(text) {
   searchYouTubeDirect();
 }
 
-// 2. SEARCH ENGINE WITH VIDEO PICKER
 async function searchYouTubeDirect() {
   const inputElem = document.getElementById('yt-search-input');
   const suggestionsBox = document.getElementById('yt-suggestions');
@@ -82,10 +74,9 @@ async function searchYouTubeDirect() {
 
   if (resultsContainer) {
     resultsContainer.classList.remove('hidden');
-    resultsContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-2"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Searching tracks...</p>`;
+    resultsContainer.innerHTML = `<p style="font-size:0.75rem; color:#94a3b8; text-align:center; padding:8px;">Searching YouTube...</p>`;
   }
 
-  // Handle direct YouTube links
   if (query.includes("youtube.com") || query.includes("youtu.be")) {
     let videoId = "";
     if (query.includes("v=")) videoId = query.split("v=")[1].split("&")[0];
@@ -95,24 +86,23 @@ async function searchYouTubeDirect() {
     return;
   }
 
-  // Fetch Videos List
   try {
     const res = await fetch(`https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
     const results = await res.json();
 
     if (results && results.length > 0) {
-      let html = `<p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Select playable video:</p>`;
+      let html = `<span class="label">Select track to play:</span>`;
       results.slice(0, 3).forEach(video => {
         const title = video.title;
         const author = video.author;
         const vId = video.videoId;
         html += `
-          <div onclick="playSelectedVideo('${vId}')" class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800 cursor-pointer hover:border-indigo-500 transition-all">
-            <div class="overflow-hidden pr-2">
-              <p class="text-xs font-bold text-white truncate">${title}</p>
-              <p class="text-[10px] text-slate-400 truncate">${author}</p>
+          <div onclick="playSelectedVideo('${vId}')" class="video-item">
+            <div>
+              <div class="video-title">${title}</div>
+              <div class="video-author">${author}</div>
             </div>
-            <span class="text-xs text-indigo-400 font-bold bg-indigo-950/50 px-2 py-1 rounded border border-indigo-800/50">▶ Play</span>
+            <span class="play-badge">▶ Play</span>
           </div>`;
       });
       if (resultsContainer) resultsContainer.innerHTML = html;
@@ -147,34 +137,31 @@ function renderPlayerIframe(embedUrl) {
   if (!container) return;
 
   container.innerHTML = `
-    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xl space-y-3">
-      <div class="overflow-hidden rounded-lg h-[90px] w-full bg-black">
-        <iframe width="100%" height="90" src="${embedUrl}" title="YouTube Player" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    <div style="overflow:hidden; border-radius:8px; height:90px; width:100%; background:#000; margin-bottom:8px;">
+      <iframe width="100%" height="90" src="${embedUrl}" title="YouTube Player" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    </div>
+    <div class="player-controls">
+      <div class="ctrl-group">
+        <span style="color:#94a3b8; font-weight:700;">KEY:</span>
+        <button onclick="transpose(-1)" class="ctrl-btn">-</button>
+        <span id="key-shift-indicator" style="font-weight:700; color:#818cf8; font-family:monospace;">0</span>
+        <button onclick="transpose(1)" class="ctrl-btn">+</button>
       </div>
-      <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800 text-xs">
-        <div class="flex items-center gap-1.5">
-          <span class="text-[10px] text-slate-400 font-semibold uppercase">Key:</span>
-          <button onclick="transpose(-1)" class="w-6 h-6 bg-slate-800 font-bold rounded text-white">-</button>
-          <span id="key-shift-indicator" class="font-mono font-bold text-indigo-400">0</span>
-          <button onclick="transpose(1)" class="w-6 h-6 bg-slate-800 font-bold rounded text-white">+</button>
-        </div>
-        <div class="flex items-center gap-2">
-          <button id="scroll-toggle-btn" onclick="toggleAutoScroll()" class="bg-indigo-600 text-white px-2.5 py-1 rounded font-semibold text-[11px]">
-            <span id="scroll-btn-text">Scroll</span>
-          </button>
-          <input type="range" id="scroll-speed" min="1" max="10" value="3" class="w-14 h-1 bg-slate-700 appearance-none rounded accent-indigo-500" />
-        </div>
+      <div class="ctrl-group">
+        <button id="scroll-toggle-btn" onclick="toggleAutoScroll()" class="btn-primary" style="padding:4px 10px; font-size:0.7rem;">
+          <span id="scroll-btn-text">Scroll</span>
+        </button>
+        <input type="range" id="scroll-speed" min="1" max="10" value="3" style="width:50px;" />
       </div>
     </div>`;
 
   container.classList.remove('hidden');
 }
 
-// 3. DEMO TRACK & RENDERER
 function loadDemoSong() {
   const resultsContainer = document.getElementById('yt-video-results');
   if (resultsContainer) resultsContainer.classList.add('hidden');
-  renderEmbedPlayer("gWW2a3B46X0"); // Direct working ID for Still Hillsong
+  renderEmbedPlayer("gWW2a3B46X0");
   renderChordSheet(demoSongData);
 }
 
@@ -182,20 +169,18 @@ function renderChordSheet(song) {
   const canvas = document.getElementById('chord-canvas');
   if (!canvas) return;
 
-  let html = `<div class="mb-3 border-b border-slate-800 pb-2"><h2 class="text-sm font-bold text-white">${song.title}</h2><p class="text-[11px] text-slate-400">${song.artist}</p></div><div class="space-y-3">`;
+  let html = `<div style="margin-bottom:12px; border-bottom:1px solid #1e293b; padding-bottom:8px;"><h2 style="font-size:0.9rem; font-weight:700; color:#fff;">${song.title}</h2><p style="font-size:0.7rem; color:#94a3b8;">${song.artist}</p></div>`;
   song.lines.forEach((line) => {
-    html += `<div class="song-line"><div class="flex gap-1 mb-1">`;
+    html += `<div style="margin-bottom:12px;"><div style="display:flex; flex-wrap:wrap; margin-bottom:2px;">`;
     line.chords.forEach(chord => {
       const shiftedChord = transposeChord(chord, currentKeyShift);
       html += `<span class="chord-block">${shiftedChord}</span>`;
     });
-    html += `</div><p class="text-xs text-slate-300 font-mono">${line.lyrics}</p></div>`;
+    html += `</div><p style="font-size:0.75rem; color:#cbd5e1; font-family:monospace;">${line.lyrics}</p></div>`;
   });
-  html += `</div>`;
   canvas.innerHTML = html;
 }
 
-// 4. TRANSPOSER LOGIC
 function transpose(semitones) {
   currentKeyShift += semitones;
   const indicator = document.getElementById('key-shift-indicator');
@@ -213,7 +198,6 @@ function transposeChord(chord, semitones) {
   });
 }
 
-// 5. AUTO-SCROLL LOGIC
 function toggleAutoScroll() {
   const btnText = document.getElementById('scroll-btn-text');
   if (scrollInterval) {
@@ -240,6 +224,6 @@ function clearCanvas() {
   
   const canvas = document.getElementById('chord-canvas');
   if (canvas) {
-    canvas.innerHTML = `<div class="text-center py-12 text-slate-500"><i class="fa-solid fa-music text-3xl mb-2 block text-slate-700"></i><p class="text-xs">Type a song title above or tap <strong>Load Demo Track</strong>!</p></div>`;
+    canvas.innerHTML = `<div class="empty-state"><p>Type a song title above or tap <strong>Load Demo Track</strong>!</p></div>`;
   }
 }
