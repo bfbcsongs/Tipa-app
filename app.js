@@ -1,12 +1,12 @@
 // ==========================================
-// PWA CHORDIFY LAB - APP.JS (SEARCH & PLAYER ENGINE)
+// PWA CHORDIFY LAB - RELIABLE SEARCH ENGINE
 // ==========================================
 
 let currentKeyShift = 0;
 let scrollInterval = null;
 const chromaticScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-// Demo Song Data
+// Demo Song
 const demoSongData = {
   title: "Still",
   artist: "Hillsong Worship",
@@ -19,82 +19,52 @@ const demoSongData = {
   ]
 };
 
-// 1. IN-APP YOUTUBE SEARCH FUNCTION
-async function searchYouTubeDirect() {
+// DIRECT YOUTUBE LOADER (100% WORKS ON MOBILE)
+function searchYouTubeDirect() {
   const inputElem = document.getElementById('yt-search-input');
-  const resultsContainer = document.getElementById('yt-search-results');
-  
   if (!inputElem) return;
+  
   const query = inputElem.value.trim();
   if (!query) return;
 
-  if (resultsContainer) {
-    resultsContainer.classList.remove('hidden');
-    resultsContainer.innerHTML = `<div class="text-center py-2 text-slate-400 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Searching YouTube for "${query}"...</div>`;
-  }
-
-  try {
-    const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=3`);
-    const data = await response.json();
-
-    if (!data.results || data.results.length === 0) {
-      loadYouTubePlayerByQuery(query);
-      return;
-    }
-
-    let html = `<p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Select Track:</p>`;
-    data.results.forEach(item => {
-      const trackSearch = `${item.artistName} - ${item.trackName}`;
-      html += `
-        <div onclick="selectSearchResult('${trackSearch}')" class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800 cursor-pointer hover:bg-slate-800 transition-colors mb-1">
-          <div class="overflow-hidden">
-            <p class="text-xs font-bold text-white truncate">${item.trackName}</p>
-            <p class="text-[10px] text-slate-400 truncate">${item.artistName}</p>
-          </div>
-          <span class="text-xs text-indigo-400 font-bold">▶ Play</span>
-        </div>`;
-    });
-
-    if (resultsContainer) resultsContainer.innerHTML = html;
-  } catch (err) {
-    loadYouTubePlayerByQuery(query);
-  }
+  loadYouTubePlayerByQuery(query);
 }
 
-// Handler when user picks a track from search results
-function selectSearchResult(searchTerm) {
-  const resultsContainer = document.getElementById('yt-search-results');
-  if (resultsContainer) resultsContainer.classList.add('hidden');
-  loadYouTubePlayerByQuery(searchTerm);
-}
-
-// 2. EMBED PLAYER LOADER
 function loadYouTubePlayerByQuery(query) {
   const container = document.getElementById('yt-player-container');
   if (!container) return;
 
+  // Clean Embed Link for YouTube Search Query
   const embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query)}&autoplay=1`;
 
   container.innerHTML = `
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xl space-y-3">
-      <!-- Compact 90px Audio Player -->
+      <!-- 90px Audio Embed -->
       <div class="overflow-hidden rounded-lg h-[90px] w-full bg-black">
-        <iframe width="100%" height="90" src="${embedUrl}" title="YouTube Player" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <iframe 
+          width="100%" 
+          height="90" 
+          src="${embedUrl}" 
+          title="YouTube Player" 
+          frameborder="0" 
+          allow="autoplay; encrypted-media" 
+          allowfullscreen>
+        </iframe>
       </div>
       
       <!-- Toolbar Controls -->
       <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800 text-xs">
-        <!-- Key Transposer -->
+        <!-- Transposer -->
         <div class="flex items-center gap-1.5">
           <span class="text-[10px] text-slate-400 font-semibold uppercase">Key:</span>
-          <button onclick="transpose(-1)" class="w-6 h-6 bg-slate-800 font-bold rounded text-white hover:bg-slate-700">-</button>
+          <button onclick="transpose(-1)" class="w-6 h-6 bg-slate-800 font-bold rounded text-white">-</button>
           <span id="key-shift-indicator" class="font-mono font-bold text-indigo-400">0</span>
-          <button onclick="transpose(1)" class="w-6 h-6 bg-slate-800 font-bold rounded text-white hover:bg-slate-700">+</button>
+          <button onclick="transpose(1)" class="w-6 h-6 bg-slate-800 font-bold rounded text-white">+</button>
         </div>
         
-        <!-- Hands-free Auto-Scroll -->
+        <!-- Auto-Scroll -->
         <div class="flex items-center gap-2">
-          <button id="scroll-toggle-btn" onclick="toggleAutoScroll()" class="bg-indigo-600 text-white px-2.5 py-1 rounded font-semibold text-[11px] hover:bg-indigo-500">
+          <button id="scroll-toggle-btn" onclick="toggleAutoScroll()" class="bg-indigo-600 text-white px-2.5 py-1 rounded font-semibold text-[11px]">
             <span id="scroll-btn-text">Scroll</span>
           </button>
           <input type="range" id="scroll-speed" min="1" max="10" value="3" class="w-14 h-1 bg-slate-700 appearance-none rounded accent-indigo-500" />
@@ -103,11 +73,9 @@ function loadYouTubePlayerByQuery(query) {
     </div>`;
 
   container.classList.remove('hidden');
-  const resultsContainer = document.getElementById('yt-search-results');
-  if (resultsContainer) resultsContainer.classList.add('hidden');
 }
 
-// 3. DEMO TRACK & RENDERER
+// DEMO TRACK & RENDERER
 function loadDemoSong() {
   loadYouTubePlayerByQuery(demoSongData.youtubeQuery);
   renderChordSheet(demoSongData);
@@ -130,7 +98,7 @@ function renderChordSheet(song) {
   canvas.innerHTML = html;
 }
 
-// 4. TRANSPOSER LOGIC
+// TRANSPOSER LOGIC
 function transpose(semitones) {
   currentKeyShift += semitones;
   const indicator = document.getElementById('key-shift-indicator');
@@ -148,7 +116,7 @@ function transposeChord(chord, semitones) {
   });
 }
 
-// 5. AUTO-SCROLL LOGIC
+// AUTO-SCROLL LOGIC
 function toggleAutoScroll() {
   const btnText = document.getElementById('scroll-btn-text');
   if (scrollInterval) {
@@ -173,6 +141,6 @@ function clearCanvas() {
   
   const canvas = document.getElementById('chord-canvas');
   if (canvas) {
-    canvas.innerHTML = `<div class="text-center py-10 text-slate-500"><p class="text-xs">Type a song above and tap <strong>Search</strong>!</p></div>`;
+    canvas.innerHTML = `<div class="text-center py-10 text-slate-500"><p class="text-xs">Type a song title above and tap <strong>Search</strong>!</p></div>`;
   }
 }
