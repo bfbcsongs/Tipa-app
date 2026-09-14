@@ -3,15 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PWA MASTER - Local MP3 Chord Detection Test</title>
+  <title>PWA MASTER - Time-Synced Chords</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body { background-color: #0f172a; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
-    .chord-block {
-      display: inline-block; font-weight: 700; font-size: 0.85rem; color: #818cf8;
-      background-color: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3);
-      padding: 2px 6px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px;
+    .chord-tile {
+      transition: all 0.2s ease;
+    }
+    .chord-active {
+      background-color: #4f46e5 !important;
+      color: #ffffff !important;
+      border-color: #818cf8 !important;
+      transform: scale(1.1);
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
     }
   </style>
 </head>
@@ -22,55 +27,40 @@
     <!-- Header -->
     <div class="flex items-center justify-between border-b border-slate-800 pb-3">
       <h1 class="text-base font-bold text-indigo-400 flex items-center gap-2">
-        <i class="fa-solid fa-file-audio"></i> PWA MASTER
+        <i class="fa-solid fa-guitar"></i> PWA MASTER
       </h1>
-      <span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-mono">LOCAL MP3 TEST</span>
+      <span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full font-mono">CHORDIFY SYNC</span>
     </div>
 
-    <!-- Local MP3 Upload Box -->
-    <div class="bg-slate-800 border border-slate-700/80 p-3.5 rounded-2xl shadow-lg space-y-3">
-      <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-        <i class="fa-solid fa-folder-open text-indigo-400 text-sm"></i> Select MP3 File from Device
+    <!-- Audio Input -->
+    <div class="bg-slate-800 border border-slate-700/80 p-3.5 rounded-2xl shadow-lg space-y-2">
+      <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+        Select Local MP3 File
       </label>
-      
       <input 
         type="file" 
-        id="mp3-file-input" 
-        accept="audio/mp3, audio/wav, audio/*"
+        id="audio-input" 
+        accept="audio/*"
+        onchange="loadAudioTrack(event)"
         class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
-        onchange="handleLocalAudio(event)"
       />
     </div>
 
-    <!-- Audio Player Container -->
-    <div id="player-box" class="hidden bg-slate-800 border border-slate-700/80 rounded-2xl p-3 shadow-xl space-y-3">
-      <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700/80 space-y-2">
-        <p id="file-title" class="text-xs font-bold text-indigo-300 truncate">No File Loaded</p>
-        <audio id="audio-player" controls class="w-full h-8"></audio>
+    <!-- Player Block -->
+    <div id="player-card" class="hidden bg-slate-800 border border-slate-700/80 rounded-2xl p-4 shadow-xl space-y-4">
+      <p id="track-name" class="text-xs font-bold text-indigo-300 truncate">No Audio Selected</p>
+      
+      <audio id="main-audio" controls class="w-full h-8"></audio>
+
+      <!-- Active Chord Spotlight (Chordify Feature) -->
+      <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 text-center">
+        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest block mb-1">Current Chord</span>
+        <div id="current-chord-display" class="text-4xl font-extrabold text-indigo-400 font-mono">--</div>
       </div>
 
-      <!-- Controls -->
-      <div class="flex items-center justify-between bg-slate-900 p-2.5 rounded-xl border border-slate-700/80 text-xs">
-        <div class="flex items-center gap-1.5">
-          <span class="text-[10px] text-slate-400 font-bold uppercase">Key:</span>
-          <button onclick="transpose(-1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 font-bold rounded-lg text-white border border-slate-700">-</button>
-          <span id="key-shift-indicator" class="font-mono font-bold text-indigo-400 px-1">0</span>
-          <button onclick="transpose(1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 font-bold rounded-lg text-white border border-slate-700">+</button>
-        </div>
-        <div class="flex items-center gap-2">
-          <button id="scroll-toggle-btn" onclick="toggleAutoScroll()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg font-bold text-[11px] transition">
-            <span id="scroll-btn-text">Scroll</span>
-          </button>
-          <input type="range" id="scroll-speed" min="1" max="10" value="3" class="w-14 h-1 bg-slate-700 appearance-none rounded accent-indigo-500" />
-        </div>
-      </div>
-    </div>
-
-    <!-- Chords Canvas -->
-    <div id="chord-canvas" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 min-h-[200px] shadow-lg">
-      <div class="text-center py-10 text-slate-500">
-        <i class="fa-solid fa-music text-3xl mb-2 block text-slate-600"></i>
-        <p class="text-xs">Choose an MP3 file above to analyze and load chords.</p>
+      <!-- Timeline Chord Grid -->
+      <div id="chord-timeline" class="grid grid-cols-4 gap-2 bg-slate-900 p-3 rounded-xl border border-slate-700/80 max-h-48 overflow-y-auto">
+        <!-- Timed tiles inserted here -->
       </div>
     </div>
 
