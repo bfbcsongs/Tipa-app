@@ -3,17 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PWA Master - Chordify Sync</title>
+  <title>PWA MASTER</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- YouTube Iframe API -->
-  <script src="https://www.youtube.com/iframe_api"></script>
   <style>
     body { background-color: #0f172a; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
     .chord-block {
       display: inline-block; font-weight: 700; font-size: 0.85rem; color: #818cf8;
       background-color: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3);
-      padding: 2px 6px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px; cursor: pointer;
+      padding: 2px 6px; border-radius: 6px; margin-right: 4px; margin-bottom: 4px;
     }
   </style>
 </head>
@@ -26,44 +24,43 @@
       <h1 class="text-base font-bold text-indigo-400 flex items-center gap-2">
         <i class="fa-solid fa-guitar"></i> PWA MASTER
       </h1>
-      <span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full font-mono">API SYNC</span>
+      <span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full font-mono">STABLE SYNC</span>
     </div>
 
     <!-- YouTube Input Box -->
     <div class="bg-slate-800 border border-slate-700/80 p-3.5 rounded-2xl shadow-lg space-y-2">
       <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-        <i class="fa-brands fa-youtube text-red-500 text-sm"></i> YouTube Video Sync
+        <i class="fa-brands fa-youtube text-red-500 text-sm"></i> YouTube Sync
       </label>
       <div class="flex gap-2">
         <input 
           type="text" 
           id="yt-url-input" 
-          placeholder="Paste YouTube Video Link or ID..." 
+          placeholder="Paste YouTube Link or Video ID..." 
           class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 shadow-inner"
-          onkeyup="if(event.key==='Enter') loadYouTubeVideo()"
         />
         <button 
-          onclick="loadYouTubeVideo()" 
+          onclick="playVideo()" 
           class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-md cursor-pointer">
           Play
         </button>
       </div>
     </div>
 
-    <!-- Controls Toolbar -->
+    <!-- Toolbar -->
     <div class="flex gap-2">
-      <button onclick="loadDemoSong()" class="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer">
-        <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Demo Track
+      <button onclick="loadDemoTrack()" class="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer">
+        <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Demo Song
       </button>
-      <button onclick="resetApp()" class="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer">
+      <button onclick="resetAll()" class="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer">
         <i class="fa-solid fa-rotate-left text-slate-400"></i> Reset
       </button>
     </div>
 
-    <!-- YouTube Video Container -->
-    <div id="player-wrapper" class="hidden bg-slate-800 border border-slate-700/80 rounded-2xl p-3 shadow-xl space-y-3">
-      <div class="overflow-hidden rounded-xl bg-black aspect-video w-full">
-        <div id="yt-player"></div>
+    <!-- Player Box -->
+    <div id="player-box" class="hidden bg-slate-800 border border-slate-700/80 rounded-2xl p-3 shadow-xl space-y-3">
+      <div id="iframe-container" class="overflow-hidden rounded-xl bg-black aspect-video w-full">
+        <!-- Native Iframe Injected Here -->
       </div>
 
       <div class="flex items-center justify-between bg-slate-900 p-2.5 rounded-xl border border-slate-700/80 text-xs">
@@ -83,10 +80,10 @@
     </div>
 
     <!-- Chords Canvas -->
-    <div id="chord-canvas" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 min-h-[250px] shadow-lg">
-      <div class="text-center py-12 text-slate-500">
+    <div id="chord-canvas" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 min-h-[200px] shadow-lg">
+      <div class="text-center py-10 text-slate-500">
         <i class="fa-solid fa-music text-3xl mb-2 block text-slate-600"></i>
-        <p class="text-xs">Paste a YouTube link above to sync video & chords.</p>
+        <p class="text-xs">Paste a YouTube link above or click Demo Song.</p>
       </div>
     </div>
 
