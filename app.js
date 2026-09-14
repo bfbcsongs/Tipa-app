@@ -1,9 +1,10 @@
 // ==========================================
-// PWA CHORDIFY LAB - APP.JS
+// PWA CHORDIFY LAB - RELIABLE SEARCH ENGINE
 // ==========================================
 
 let currentKeyShift = 0;
 let scrollInterval = null;
+let suggestionDebounce = null;
 const chromaticScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const demoSongData = {
@@ -18,32 +19,103 @@ const demoSongData = {
   ]
 };
 
-function searchYouTubeDirect() {
+// 1. LIVE SUGGESTIONS ENGINE (JSONP Search)
+function handleSearchSuggestions() {
+  clearTimeout(suggestionDebounce);
+  const input = document.getElementById('yt-search-input');
+  const suggestionsBox = document.getElementById('yt-suggestions');
+
+  if (!input || !suggestionsBox) return;
+  const query = input.value.trim();
+
+  if (query.length < 2) {
+    suggestionsBox.classList.add('hidden');
+    return;
+  }
+
+  suggestionDebounce = setTimeout(() => {
+    // Inject Script Tag for JSONP to bypass CORS restrictions
+    const oldScript = document.getElementById('jsonp-suggest');
+    if (oldScript) oldScript.remove();
+
+    window.suggestCallback = function(data) {
+      if (data && data[1] && data[1].length > 0) {
+        let html = '';
+        data[1].slice(0, 5).forEach(item => {
+          const text = item[0];
+          html += `<div onclick="selectSuggestion('${text.replace(/'/g, "\\'")}')" class="px-3 py-2 text-xs text-slate-200 hover:bg-indigo-600 hover:text-white cursor-pointer border-b border-slate-800/50 last:border-none flex items-center gap-2">
+            <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-500"></i> ${text}
+          </div>`;
+        });
+        suggestionsBox.innerHTML = html;
+        suggestionsBox.classList.remove('hidden');
+      } else {
+        suggestionsBox.classList.add('hidden');
+      }
+    };
+
+    const script = document.createElement('script');
+    script.id = 'jsonp-suggest';
+    script.src = `https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(query)}&jsonp=suggestCallback`;
+    document.body.appendChild(script);
+  }, 250);
+}
+
+function selectSuggestion(text) {
+  const input = document.getElementById('yt-search-input');
+  const suggestionsBox = document.getElementById('yt-suggestions');
+  if (input) input.value = text;
+  if (suggestionsBox) suggestionsBox.classList.add('hidden');
+  searchYouTubeDirect();
+}
+
+// 2. DIRECT YOUTUBE SEARCH & EMBED PLAYER
+async function searchYouTubeDirect() {
   const inputElem = document.getElementById('yt-search-input');
+  const suggestionsBox = document.getElementById('yt-suggestions');
+  if (suggestionsBox) suggestionsBox.classList.add('hidden');
   if (!inputElem) return;
+
   const query = inputElem.value.trim();
   if (!query) return;
 
-  loadYouTubePlayerByQuery(query);
-}
-
-function loadYouTubePlayerByQuery(query) {
-  const container = document.getElementById('yt-player-container');
-  if (!container) return;
-
-  // Handles both full URL links and search text
-  let embedUrl = "";
+  // Check if link or title
   if (query.includes("youtube.com") || query.includes("youtu.be")) {
     let videoId = "";
-    if (query.includes("v=")) {
-      videoId = query.split("v=")[1].split("&")[0];
-    } else if (query.includes("youtu.be/")) {
-      videoId = query.split("youtu.be/")[1].split("?")[0];
-    }
-    embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    if (query.includes("v=")) videoId = query.split("v=")[1].split("&")[0];
+    else if (query.includes("youtu.be/")) videoId = query.split("youtu.be/")[1].split("?")[0];
+    renderEmbedPlayer(videoId);
   } else {
-    embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query)}&autoplay=1`;
+    // Fetch Exact Video ID via Public Invidious API
+    try {
+      const res = await fetch(`https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
+      const results = await res.json();
+      if (results && results.length > 0) {
+        renderEmbedPlayer(results[0].videoId);
+      } else {
+        fallbackSearchUrl(query);
+      }
+    } catch (err) {
+      fallbackSearchUrl(query);
+    }
   }
+}
+
+function fallbackSearchUrl(query) {
+  const container = document.getElementById('yt-player-container');
+  if (!container) return;
+  const embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query)}&autoplay=1`;
+  renderPlayerIframe(embedUrl);
+}
+
+function renderEmbedPlayer(videoId) {
+  const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
+  renderPlayerIframe(embedUrl);
+}
+
+function renderPlayerIframe(embedUrl) {
+  const container = document.getElementById('yt-player-container');
+  if (!container) return;
 
   container.innerHTML = `
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xl space-y-3">
@@ -69,8 +141,9 @@ function loadYouTubePlayerByQuery(query) {
   container.classList.remove('hidden');
 }
 
+// 3. DEMO TRACK & RENDERER
 function loadDemoSong() {
-  loadYouTubePlayerByQuery(demoSongData.youtubeQuery);
+  searchYouTubeDirect("Still Hillsong Worship Audio");
   renderChordSheet(demoSongData);
 }
 
@@ -91,6 +164,7 @@ function renderChordSheet(song) {
   canvas.innerHTML = html;
 }
 
+// 4. TRANSPOSER LOGIC
 function transpose(semitones) {
   currentKeyShift += semitones;
   const indicator = document.getElementById('key-shift-indicator');
@@ -108,6 +182,7 @@ function transposeChord(chord, semitones) {
   });
 }
 
+// 5. AUTO-SCROLL LOGIC
 function toggleAutoScroll() {
   const btnText = document.getElementById('scroll-btn-text');
   if (scrollInterval) {
@@ -129,6 +204,7 @@ function clearCanvas() {
   currentKeyShift = 0;
   const playerContainer = document.getElementById('yt-player-container');
   if (playerContainer) playerContainer.classList.add('hidden');
+  
   const canvas = document.getElementById('chord-canvas');
   if (canvas) {
     canvas.innerHTML = `<div class="text-center py-12 text-slate-500"><i class="fa-solid fa-music text-3xl mb-2 block text-slate-700"></i><p class="text-xs">Type a song title above or tap <strong>Load Demo Track</strong>!</p></div>`;
