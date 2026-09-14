@@ -1,104 +1,67 @@
-let currentKeyShift = 0;
-let scrollInterval = null;
-let currentSongData = null;
-const chromaticScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+let activeAudio = document.getElementById('main-audio');
 
-// 1. Process Local MP3 Upload
-function handleLocalAudio(event) {
+// 1. Time-Stamped Chord Data (Seconds : Chord)
+const chordTimelineData = [
+  { time: 0, chord: "C" },
+  { time: 3, chord: "G" },
+  { time: 6, chord: "Am" },
+  { time: 9, chord: "F" },
+  { time: 12, chord: "C" },
+  { time: 15, chord: "G" },
+  { time: 18, chord: "F" },
+  { time: 21, chord: "C" }
+];
+
+function loadAudioTrack(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  const canvas = document.getElementById('chord-canvas');
-  const playerBox = document.getElementById('player-box');
-  const audioPlayer = document.getElementById('audio-player');
-  const fileTitle = document.getElementById('file-title');
+  document.getElementById('track-name').innerText = file.name;
+  activeAudio.src = URL.createObjectURL(file);
+  document.getElementById('player-card').classList.remove('hidden');
 
-  // Set File Name
-  fileTitle.innerText = file.name;
-
-  // Create Object URL for HTML5 Audio Tag
-  const fileUrl = URL.createObjectURL(file);
-  audioPlayer.src = fileUrl;
-
-  // Show Processing State
-  canvas.innerHTML = `
-    <div class="text-center py-10 text-slate-400">
-      <i class="fa-solid fa-waveform-lines fa-spin text-2xl mb-2 text-indigo-400"></i>
-      <p class="text-xs font-bold">Analyzing Local MP3 File...</p>
-      <p class="text-[10px] text-slate-500 mt-1">Detecting key signature and extracting chord structure</p>
-    </div>`;
-
-  // Simulate Local Audio Analysis / Detection Engine
-  setTimeout(() => {
-    currentSongData = analyzeLocalAudioFile(file.name);
-    renderChords(currentSongData);
-    playerBox.classList.remove('hidden');
-  }, 1200);
-}
-
-// 2. Local Audio Chord Detection Parser (Generates Chords Based on File Context)
-function analyzeLocalAudioFile(fileName) {
-  // In production, Web Audio API / Pitch Detection algorithm runs here.
-  // For proof of concept, it parses filename or assigns analyzed progression:
-  return {
-    title: fileName.replace(/\.[^/.]+$/, ""),
-    artist: "Local Storage Audio",
-    lines: [
-      { chords: ["G", "D", "Em", "C"], lyrics: "[Verse 1] Detected Progression A" },
-      { chords: ["G", "D", "C"], lyrics: "Audio stream synchronized successfully" },
-      { chords: ["Em", "Bm", "C", "D"], lyrics: "[Chorus] Live transpose and scroll active" },
-      { chords: ["G", "D", "G"], lyrics: "Ready for playback" }
-    ]
-  };
-}
-
-// 3. Render Chord Sheet
-function renderChords(song) {
-  const canvas = document.getElementById('chord-canvas');
-  let html = `<div class="mb-3 border-b border-slate-700/80 pb-2"><h2 class="text-sm font-bold text-white">${song.title}</h2><p class="text-[11px] text-slate-400">${song.artist}</p></div><div class="space-y-3">`;
+  renderTimelineTiles();
   
-  song.lines.forEach((line) => {
-    html += `<div class="song-line"><div class="flex flex-wrap gap-1 mb-1">`;
-    line.chords.forEach(chord => {
-      const shiftedChord = transposeChord(chord, currentKeyShift);
-      html += `<span class="chord-block">${shiftedChord}</span>`;
-    });
-    html += `</div><p class="text-xs text-slate-300 font-mono">${line.lyrics}</p></div>`;
-  });
-  
-  html += `</div>`;
-  canvas.innerHTML = html;
+  // Attach time listener for real-time chord highlighting
+  activeAudio.ontimeupdate = syncChordsToTime;
 }
 
-// 4. Transpose Functions
-function transpose(semitones) {
-  currentKeyShift += semitones;
-  document.getElementById('key-shift-indicator').innerText = (currentKeyShift > 0 ? '+' : '') + currentKeyShift;
-  if (currentSongData) renderChords(currentSongData);
-}
+function renderTimelineTiles() {
+  const container = document.getElementById('chord-timeline');
+  container.innerHTML = '';
 
-function transposeChord(chord, semitones) {
-  return chord.replace(/[A-G][#b]?/g, (match) => {
-    let index = chromaticScale.indexOf(match);
-    if (index === -1) return match;
-    let newIndex = (index + semitones) % 12;
-    if (newIndex < 0) newIndex += 12;
-    return chromaticScale[newIndex];
+  chordTimelineData.forEach((item, index) => {
+    const tile = document.createElement('div');
+    tile.id = `chord-tile-${index}`;
+    tile.className = "chord-tile bg-slate-800 border border-slate-700 rounded-lg p-2 text-center text-xs font-bold font-mono text-slate-300";
+    tile.innerHTML = `<div>${item.chord}</div><div class="text-[9px] text-slate-500 font-sans">${item.time}s</div>`;
+    container.appendChild(tile);
   });
 }
 
-// 5. Auto Scroll
-function toggleAutoScroll() {
-  const btnText = document.getElementById('scroll-btn-text');
-  if (scrollInterval) {
-    clearInterval(scrollInterval);
-    scrollInterval = null;
-    btnText.innerText = 'Scroll';
-  } else {
-    btnText.innerText = 'Pause';
-    scrollInterval = setInterval(() => {
-      const speed = document.getElementById('scroll-speed').value;
-      window.scrollBy({ top: parseInt(speed), behavior: 'smooth' });
-    }, 100);
+function syncChordsToTime() {
+  const currentTime = activeAudio.currentTime;
+  let activeIndex = -1;
+
+  // Find the matching chord for the current playback time
+  for (let i = 0; i < chordTimelineData.length; i++) {
+    if (currentTime >= chordTimelineData[i].time) {
+      activeIndex = i;
+    } else {
+      break;
+    }
+  }
+
+  if (activeIndex !== -1) {
+    const activeChord = chordTimelineData[activeIndex].chord;
+    document.getElementById('current-chord-display').innerText = activeChord;
+
+    // Highlight active tile in timeline grid
+    document.querySelectorAll('.chord-tile').forEach(tile => tile.classList.remove('chord-active'));
+    const currentTile = document.getElementById(`chord-tile-${activeIndex}`);
+    if (currentTile) {
+      currentTile.classList.add('chord-active');
+      currentTile.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }
 }
