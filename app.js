@@ -1,12 +1,11 @@
 // ==========================================
-// PWA CHORDIFY LAB - RELIABLE SEARCH ENGINE
+// PWA CHORDIFY LAB - APP.JS
 // ==========================================
 
 let currentKeyShift = 0;
 let scrollInterval = null;
 const chromaticScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-// Demo Song
 const demoSongData = {
   title: "Still",
   artist: "Hillsong Worship",
@@ -19,11 +18,9 @@ const demoSongData = {
   ]
 };
 
-// DIRECT YOUTUBE LOADER (100% WORKS ON MOBILE)
 function searchYouTubeDirect() {
   const inputElem = document.getElementById('yt-search-input');
   if (!inputElem) return;
-  
   const query = inputElem.value.trim();
   if (!query) return;
 
@@ -34,35 +31,32 @@ function loadYouTubePlayerByQuery(query) {
   const container = document.getElementById('yt-player-container');
   if (!container) return;
 
-  // Clean Embed Link for YouTube Search Query
-  const embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query)}&autoplay=1`;
+  // Handles both full URL links and search text
+  let embedUrl = "";
+  if (query.includes("youtube.com") || query.includes("youtu.be")) {
+    let videoId = "";
+    if (query.includes("v=")) {
+      videoId = query.split("v=")[1].split("&")[0];
+    } else if (query.includes("youtu.be/")) {
+      videoId = query.split("youtu.be/")[1].split("?")[0];
+    }
+    embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+  } else {
+    embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query)}&autoplay=1`;
+  }
 
   container.innerHTML = `
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-xl space-y-3">
-      <!-- 90px Audio Embed -->
       <div class="overflow-hidden rounded-lg h-[90px] w-full bg-black">
-        <iframe 
-          width="100%" 
-          height="90" 
-          src="${embedUrl}" 
-          title="YouTube Player" 
-          frameborder="0" 
-          allow="autoplay; encrypted-media" 
-          allowfullscreen>
-        </iframe>
+        <iframe width="100%" height="90" src="${embedUrl}" title="YouTube Player" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
       </div>
-      
-      <!-- Toolbar Controls -->
       <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800 text-xs">
-        <!-- Transposer -->
         <div class="flex items-center gap-1.5">
           <span class="text-[10px] text-slate-400 font-semibold uppercase">Key:</span>
           <button onclick="transpose(-1)" class="w-6 h-6 bg-slate-800 font-bold rounded text-white">-</button>
           <span id="key-shift-indicator" class="font-mono font-bold text-indigo-400">0</span>
           <button onclick="transpose(1)" class="w-6 h-6 bg-slate-800 font-bold rounded text-white">+</button>
         </div>
-        
-        <!-- Auto-Scroll -->
         <div class="flex items-center gap-2">
           <button id="scroll-toggle-btn" onclick="toggleAutoScroll()" class="bg-indigo-600 text-white px-2.5 py-1 rounded font-semibold text-[11px]">
             <span id="scroll-btn-text">Scroll</span>
@@ -75,7 +69,6 @@ function loadYouTubePlayerByQuery(query) {
   container.classList.remove('hidden');
 }
 
-// DEMO TRACK & RENDERER
 function loadDemoSong() {
   loadYouTubePlayerByQuery(demoSongData.youtubeQuery);
   renderChordSheet(demoSongData);
@@ -98,7 +91,6 @@ function renderChordSheet(song) {
   canvas.innerHTML = html;
 }
 
-// TRANSPOSER LOGIC
 function transpose(semitones) {
   currentKeyShift += semitones;
   const indicator = document.getElementById('key-shift-indicator');
@@ -116,7 +108,6 @@ function transposeChord(chord, semitones) {
   });
 }
 
-// AUTO-SCROLL LOGIC
 function toggleAutoScroll() {
   const btnText = document.getElementById('scroll-btn-text');
   if (scrollInterval) {
@@ -138,9 +129,8 @@ function clearCanvas() {
   currentKeyShift = 0;
   const playerContainer = document.getElementById('yt-player-container');
   if (playerContainer) playerContainer.classList.add('hidden');
-  
   const canvas = document.getElementById('chord-canvas');
   if (canvas) {
-    canvas.innerHTML = `<div class="text-center py-10 text-slate-500"><p class="text-xs">Type a song title above and tap <strong>Search</strong>!</p></div>`;
+    canvas.innerHTML = `<div class="text-center py-12 text-slate-500"><i class="fa-solid fa-music text-3xl mb-2 block text-slate-700"></i><p class="text-xs">Type a song title above or tap <strong>Load Demo Track</strong>!</p></div>`;
   }
 }
