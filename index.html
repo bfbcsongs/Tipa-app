@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PWA Chordify Lab</title>
+  <title>PWA Master - Chordify Sync</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- YouTube Iframe API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
   <style>
     body { background-color: #0f172a; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
     .chord-block {
@@ -22,55 +24,69 @@
     <!-- Header -->
     <div class="flex items-center justify-between border-b border-slate-800 pb-3">
       <h1 class="text-base font-bold text-indigo-400 flex items-center gap-2">
-        <i class="fa-solid fa-guitar"></i> PWA Chordify Lab
+        <i class="fa-solid fa-guitar"></i> PWA MASTER
       </h1>
-      <span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full font-mono">BFBC SYNC</span>
+      <span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full font-mono">API SYNC</span>
     </div>
 
-    <!-- Search / URL Input Card -->
-    <div class="bg-slate-800 border border-slate-700/80 p-3.5 rounded-2xl shadow-lg relative space-y-2">
+    <!-- YouTube Input Box -->
+    <div class="bg-slate-800 border border-slate-700/80 p-3.5 rounded-2xl shadow-lg space-y-2">
       <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
         <i class="fa-brands fa-youtube text-red-500 text-sm"></i> YouTube Video Sync
       </label>
       <div class="flex gap-2">
         <input 
           type="text" 
-          id="yt-search-input" 
-          placeholder="Paste YouTube Link or Type Title..." 
+          id="yt-url-input" 
+          placeholder="Paste YouTube Video Link or ID..." 
           class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 shadow-inner"
-          oninput="handleSearchSuggestions()"
-          onkeyup="if(event.key==='Enter') processMediaInput()"
-          autocomplete="off"
+          onkeyup="if(event.key==='Enter') loadYouTubeVideo()"
         />
         <button 
-          onclick="processMediaInput()" 
-          class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-md flex items-center gap-1 cursor-pointer">
-          <span>Load</span>
+          onclick="loadYouTubeVideo()" 
+          class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-md cursor-pointer">
+          Play
         </button>
       </div>
-
-      <!-- Live Search Suggestions -->
-      <div id="yt-suggestions" class="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl hidden z-50 max-h-48 overflow-y-auto"></div>
     </div>
 
-    <!-- Action Toolbar -->
+    <!-- Controls Toolbar -->
     <div class="flex gap-2">
       <button onclick="loadDemoSong()" class="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer">
-        <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Load Demo Track
+        <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Demo Track
       </button>
-      <button onclick="clearCanvas()" class="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer">
-        <i class="fa-solid fa-rotate-left text-slate-400"></i> Reset Sheet
+      <button onclick="resetApp()" class="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer">
+        <i class="fa-solid fa-rotate-left text-slate-400"></i> Reset
       </button>
     </div>
 
-    <!-- Dynamic Audio Player -->
-    <div id="yt-player-container" class="hidden"></div>
+    <!-- YouTube Video Container -->
+    <div id="player-wrapper" class="hidden bg-slate-800 border border-slate-700/80 rounded-2xl p-3 shadow-xl space-y-3">
+      <div class="overflow-hidden rounded-xl bg-black aspect-video w-full">
+        <div id="yt-player"></div>
+      </div>
 
-    <!-- Interactive Sheet Container -->
-    <div id="chord-canvas" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 min-h-[300px] shadow-lg">
+      <div class="flex items-center justify-between bg-slate-900 p-2.5 rounded-xl border border-slate-700/80 text-xs">
+        <div class="flex items-center gap-1.5">
+          <span class="text-[10px] text-slate-400 font-bold uppercase">Key:</span>
+          <button onclick="transpose(-1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 font-bold rounded-lg text-white border border-slate-700">-</button>
+          <span id="key-shift-indicator" class="font-mono font-bold text-indigo-400 px-1">0</span>
+          <button onclick="transpose(1)" class="w-6 h-6 bg-slate-800 hover:bg-slate-700 font-bold rounded-lg text-white border border-slate-700">+</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="scroll-toggle-btn" onclick="toggleAutoScroll()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg font-bold text-[11px] transition">
+            <span id="scroll-btn-text">Scroll</span>
+          </button>
+          <input type="range" id="scroll-speed" min="1" max="10" value="3" class="w-14 h-1 bg-slate-700 appearance-none rounded accent-indigo-500" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Chords Canvas -->
+    <div id="chord-canvas" class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 min-h-[250px] shadow-lg">
       <div class="text-center py-12 text-slate-500">
         <i class="fa-solid fa-music text-3xl mb-2 block text-slate-600"></i>
-        <p class="text-xs">Paste a YouTube URL or tap <strong>Load Demo Track</strong>!</p>
+        <p class="text-xs">Paste a YouTube link above to sync video & chords.</p>
       </div>
     </div>
 
