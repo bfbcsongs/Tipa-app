@@ -1,5 +1,5 @@
 // ==========================================
-// PWA CHORDIFY LAB - RELIABLE SEARCH ENGINE
+// PWA CHORDIFY LAB - MULTI-FALLBACK SEARCH
 // ==========================================
 
 let currentKeyShift = 0;
@@ -19,7 +19,7 @@ const demoSongData = {
   ]
 };
 
-// 1. LIVE SUGGESTIONS ENGINE (JSONP Search)
+// 1. LIVE WORD SUGGESTIONS
 function handleSearchSuggestions() {
   clearTimeout(suggestionDebounce);
   const input = document.getElementById('yt-search-input');
@@ -34,7 +34,6 @@ function handleSearchSuggestions() {
   }
 
   suggestionDebounce = setTimeout(() => {
-    // Inject Script Tag for JSONP to bypass CORS restrictions
     const oldScript = document.getElementById('jsonp-suggest');
     if (oldScript) oldScript.remove();
 
@@ -58,7 +57,7 @@ function handleSearchSuggestions() {
     script.id = 'jsonp-suggest';
     script.src = `https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(query)}&jsonp=suggestCallback`;
     document.body.appendChild(script);
-  }, 250);
+  }, 200);
 }
 
 function selectSuggestion(text) {
@@ -69,47 +68,77 @@ function selectSuggestion(text) {
   searchYouTubeDirect();
 }
 
-// 2. DIRECT YOUTUBE SEARCH & EMBED PLAYER
+// 2. SEARCH ENGINE WITH VIDEO PICKER
 async function searchYouTubeDirect() {
   const inputElem = document.getElementById('yt-search-input');
   const suggestionsBox = document.getElementById('yt-suggestions');
+  const resultsContainer = document.getElementById('yt-video-results');
+  
   if (suggestionsBox) suggestionsBox.classList.add('hidden');
   if (!inputElem) return;
 
   const query = inputElem.value.trim();
   if (!query) return;
 
-  // Check if link or title
+  if (resultsContainer) {
+    resultsContainer.classList.remove('hidden');
+    resultsContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-2"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Searching tracks...</p>`;
+  }
+
+  // Handle direct YouTube links
   if (query.includes("youtube.com") || query.includes("youtu.be")) {
     let videoId = "";
     if (query.includes("v=")) videoId = query.split("v=")[1].split("&")[0];
     else if (query.includes("youtu.be/")) videoId = query.split("youtu.be/")[1].split("?")[0];
+    if (resultsContainer) resultsContainer.classList.add('hidden');
     renderEmbedPlayer(videoId);
-  } else {
-    // Fetch Exact Video ID via Public Invidious API
-    try {
-      const res = await fetch(`https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
-      const results = await res.json();
-      if (results && results.length > 0) {
-        renderEmbedPlayer(results[0].videoId);
-      } else {
-        fallbackSearchUrl(query);
-      }
-    } catch (err) {
-      fallbackSearchUrl(query);
+    return;
+  }
+
+  // Fetch Videos List
+  try {
+    const res = await fetch(`https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
+    const results = await res.json();
+
+    if (results && results.length > 0) {
+      let html = `<p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Select playable video:</p>`;
+      results.slice(0, 3).forEach(video => {
+        const title = video.title;
+        const author = video.author;
+        const vId = video.videoId;
+        html += `
+          <div onclick="playSelectedVideo('${vId}')" class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800 cursor-pointer hover:border-indigo-500 transition-all">
+            <div class="overflow-hidden pr-2">
+              <p class="text-xs font-bold text-white truncate">${title}</p>
+              <p class="text-[10px] text-slate-400 truncate">${author}</p>
+            </div>
+            <span class="text-xs text-indigo-400 font-bold bg-indigo-950/50 px-2 py-1 rounded border border-indigo-800/50">▶ Play</span>
+          </div>`;
+      });
+      if (resultsContainer) resultsContainer.innerHTML = html;
+    } else {
+      fallbackToDirectSearch(query);
     }
+  } catch (err) {
+    fallbackToDirectSearch(query);
   }
 }
 
-function fallbackSearchUrl(query) {
-  const container = document.getElementById('yt-player-container');
-  if (!container) return;
+function playSelectedVideo(videoId) {
+  const resultsContainer = document.getElementById('yt-video-results');
+  if (resultsContainer) resultsContainer.classList.add('hidden');
+  renderEmbedPlayer(videoId);
+}
+
+function fallbackToDirectSearch(query) {
+  const resultsContainer = document.getElementById('yt-video-results');
+  if (resultsContainer) resultsContainer.classList.add('hidden');
   const embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query)}&autoplay=1`;
   renderPlayerIframe(embedUrl);
 }
 
 function renderEmbedPlayer(videoId) {
-  const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
   renderPlayerIframe(embedUrl);
 }
 
@@ -143,7 +172,9 @@ function renderPlayerIframe(embedUrl) {
 
 // 3. DEMO TRACK & RENDERER
 function loadDemoSong() {
-  searchYouTubeDirect("Still Hillsong Worship Audio");
+  const resultsContainer = document.getElementById('yt-video-results');
+  if (resultsContainer) resultsContainer.classList.add('hidden');
+  renderEmbedPlayer("gWW2a3B46X0"); // Direct working ID for Still Hillsong
   renderChordSheet(demoSongData);
 }
 
@@ -204,6 +235,8 @@ function clearCanvas() {
   currentKeyShift = 0;
   const playerContainer = document.getElementById('yt-player-container');
   if (playerContainer) playerContainer.classList.add('hidden');
+  const resultsContainer = document.getElementById('yt-video-results');
+  if (resultsContainer) resultsContainer.classList.add('hidden');
   
   const canvas = document.getElementById('chord-canvas');
   if (canvas) {
