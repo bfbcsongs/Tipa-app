@@ -1,71 +1,383 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PWA MASTER - Time-Synced Chords</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: ui-sans-serif, system-ui, sans-serif; }
-    .chord-tile {
-      transition: all 0.2s ease;
-    }
-    .chord-active {
-      background-color: #4f46e5 !important;
-      color: #ffffff !important;
-      border-color: #818cf8 !important;
-      transform: scale(1.1);
-      box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
-    }
-  </style>
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+
+<title>Audio Editor</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: white;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 700px;
+    margin: auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin: 10px 0 5px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #94a3b8;
+    margin-bottom: 25px;
+}
+
+.card {
+    background: #1e293b;
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 16px;
+}
+
+input[type="file"] {
+    width: 100%;
+    padding: 12px;
+    background: #334155;
+    color: white;
+    border-radius: 10px;
+}
+
+.song-name {
+    margin-top: 12px;
+    font-weight: bold;
+    word-break: break-word;
+}
+
+audio {
+    width: 100%;
+    margin-top: 15px;
+}
+
+.control {
+    margin: 20px 0;
+}
+
+.control-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.control-value {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+input[type="range"] {
+    width: 100%;
+}
+
+.buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+button {
+    flex: 1;
+    min-width: 120px;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: #2563eb;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+button.secondary {
+    background: #475569;
+}
+
+button.export {
+    background: #16a34a;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.status {
+    text-align: center;
+    color: #94a3b8;
+    margin-top: 15px;
+    min-height: 22px;
+}
+
+.note {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #94a3b8;
+    margin-top: 15px;
+}
+</style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen pb-12">
 
-  <div class="max-w-md mx-auto p-4 space-y-4">
-    
-    <!-- Header -->
-    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-      <h1 class="text-base font-bold text-indigo-400 flex items-center gap-2">
-        <i class="fa-solid fa-guitar"></i> PWA MASTER
-      </h1>
-      <span class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full font-mono">CHORDIFY SYNC</span>
+<body>
+
+<div class="container">
+
+    <h1>🎵 Audio Editor</h1>
+
+    <div class="subtitle">
+        Pitch & Tempo — Independent Control
     </div>
 
-    <!-- Audio Input -->
-    <div class="bg-slate-800 border border-slate-700/80 p-3.5 rounded-2xl shadow-lg space-y-2">
-      <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">
-        Select Local MP3 File
-      </label>
-      <input 
-        type="file" 
-        id="audio-input" 
-        accept="audio/*"
-        onchange="loadAudioTrack(event)"
-        class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
-      />
+    <div class="card">
+
+        <input
+            type="file"
+            id="audioFile"
+            accept="audio/mpeg,audio/wav,audio/*"
+        >
+
+        <div class="song-name" id="songName">
+            No audio selected
+        </div>
+
+        <audio
+            id="audioPlayer"
+            controls
+        ></audio>
+
     </div>
 
-    <!-- Player Block -->
-    <div id="player-card" class="hidden bg-slate-800 border border-slate-700/80 rounded-2xl p-4 shadow-xl space-y-4">
-      <p id="track-name" class="text-xs font-bold text-indigo-300 truncate">No Audio Selected</p>
-      
-      <audio id="main-audio" controls class="w-full h-8"></audio>
 
-      <!-- Active Chord Spotlight (Chordify Feature) -->
-      <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 text-center">
-        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest block mb-1">Current Chord</span>
-        <div id="current-chord-display" class="text-4xl font-extrabold text-indigo-400 font-mono">--</div>
-      </div>
+    <div class="card">
 
-      <!-- Timeline Chord Grid -->
-      <div id="chord-timeline" class="grid grid-cols-4 gap-2 bg-slate-900 p-3 rounded-xl border border-slate-700/80 max-h-48 overflow-y-auto">
-        <!-- Timed tiles inserted here -->
-      </div>
+        <div class="control">
+
+            <div class="control-header">
+                <span>🎼 Pitch</span>
+                <span class="control-value"
+                      id="pitchValue">
+                    0 semitones
+                </span>
+            </div>
+
+            <input
+                type="range"
+                id="pitch"
+                min="-12"
+                max="12"
+                step="1"
+                value="0"
+            >
+
+        </div>
+
+
+        <div class="control">
+
+            <div class="control-header">
+                <span>🕐 Tempo</span>
+                <span class="control-value"
+                      id="tempoValue">
+                    100%
+                </span>
+            </div>
+
+            <input
+                type="range"
+                id="tempo"
+                min="50"
+                max="150"
+                step="1"
+                value="100"
+            >
+
+        </div>
+
     </div>
 
-  </div>
 
-  <script src="app.js"></script>
+    <div class="card">
+
+        <div class="buttons">
+
+            <button
+                id="resetButton"
+                class="secondary">
+                Reset
+            </button>
+
+            <button
+                id="exportButton"
+                class="export"
+                disabled>
+                Export Audio
+            </button>
+
+        </div>
+
+        <div
+            class="status"
+            id="status">
+            Select an audio file to begin.
+        </div>
+
+        <div class="note">
+            Pitch and tempo controls are designed as
+            independent parameters. The actual processing
+            engine will be added in the next stage.
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+const audioFile = document.getElementById("audioFile");
+const audioPlayer = document.getElementById("audioPlayer");
+
+const songName = document.getElementById("songName");
+
+const pitch = document.getElementById("pitch");
+const tempo = document.getElementById("tempo");
+
+const pitchValue = document.getElementById("pitchValue");
+const tempoValue = document.getElementById("tempoValue");
+
+const resetButton = document.getElementById("resetButton");
+const exportButton = document.getElementById("exportButton");
+
+const status = document.getElementById("status");
+
+let audioURL = null;
+let selectedFile = null;
+
+
+/* -------------------------
+   FILE SELECTION
+------------------------- */
+
+audioFile.addEventListener("change", function () {
+
+    const file = this.files[0];
+
+    if (!file) {
+        return;
+    }
+
+    selectedFile = file;
+
+    if (audioURL) {
+        URL.revokeObjectURL(audioURL);
+    }
+
+    audioURL = URL.createObjectURL(file);
+
+    audioPlayer.src = audioURL;
+
+    songName.textContent = file.name;
+
+    exportButton.disabled = false;
+
+    status.textContent =
+        "Audio loaded successfully.";
+
+});
+
+
+/* -------------------------
+   PITCH DISPLAY
+------------------------- */
+
+pitch.addEventListener("input", function () {
+
+    const value = Number(this.value);
+
+    if (value === 0) {
+        pitchValue.textContent =
+            "0 semitones";
+    }
+    else if (value > 0) {
+        pitchValue.textContent =
+            "+" + value + " semitones";
+    }
+    else {
+        pitchValue.textContent =
+            value + " semitones";
+    }
+
+});
+
+
+/* -------------------------
+   TEMPO DISPLAY
+------------------------- */
+
+tempo.addEventListener("input", function () {
+
+    tempoValue.textContent =
+        this.value + "%";
+
+});
+
+
+/* -------------------------
+   RESET
+------------------------- */
+
+resetButton.addEventListener("click", function () {
+
+    pitch.value = 0;
+    tempo.value = 100;
+
+    pitchValue.textContent =
+        "0 semitones";
+
+    tempoValue.textContent =
+        "100%";
+
+    status.textContent =
+        "Controls reset.";
+
+});
+
+
+/* -------------------------
+   EXPORT
+------------------------- */
+
+exportButton.addEventListener("click", function () {
+
+    if (!selectedFile) {
+        return;
+    }
+
+    status.textContent =
+        "Export engine coming in the next stage.";
+
+});
+
+
+</script>
+
 </body>
 </html>
