@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Audio Editor</title>
 
-<!-- Include Tone.js library -->
+<!-- Include Tone.js for PitchShift processing -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
 <style>
@@ -57,6 +57,11 @@ input[type="file"] {
     margin-top: 12px;
     font-weight: bold;
     word-break: break-word;
+}
+
+audio {
+    width: 100%;
+    margin-top: 15px;
 }
 
 .buttons {
@@ -134,11 +139,7 @@ input[type="range"] {
     <div class="card">
         <input type="file" id="audioFile" accept="audio/*">
         <div class="song-name" id="songName">No audio selected</div>
-        
-        <div class="buttons">
-            <button id="playButton" disabled>Play</button>
-            <button id="pauseButton" class="secondary" disabled>Pause</button>
-        </div>
+        <audio id="audioPlayer" controls></audio>
     </div>
 
     <div class="card">
@@ -169,14 +170,14 @@ input[type="range"] {
 </div>
 
 <script>
-let player = null;
+let audioCtx = null;
+let sourceNode = null;
 let pitchShift = null;
-let isLoaded = false;
+let isConnected = false;
 
 const audioFile = document.getElementById("audioFile");
+const audioPlayer = document.getElementById("audioPlayer");
 const songName = document.getElementById("songName");
-const playButton = document.getElementById("playButton");
-const pauseButton = document.getElementById("pauseButton");
 const pitch = document.getElementById("pitch");
 const tempo = document.getElementById("tempo");
 const pitchValue = document.getElementById("pitchValue");
@@ -184,62 +185,49 @@ const tempoValue = document.getElementById("tempoValue");
 const resetButton = document.getElementById("resetButton");
 const statusDiv = document.getElementById("status");
 
-audioFile.addEventListener("change", async function () {
+audioFile.addEventListener("change", function () {
     const file = this.files[0];
     if (!file) return;
 
     songName.textContent = file.name;
-    statusDiv.textContent = "Loading audio...";
-
-    await Tone.start();
-
-    const fileURL = URL.createObjectURL(file);
-
-    if (player) player.dispose();
-    if (pitchShift) pitchShift.dispose();
-
-    // Create a pitch shift effect node
-    pitchShift = new Tone.PitchShift({
-        pitch: Number(pitch.value),
-        windowSize: 0.1
-    }).toDestination();
-
-    // Create player and connect to pitch shifter
-    player = new Tone.Player({
-        url: fileURL,
-        loop: true,
-        playbackRate: Number(tempo.value) / 100,
-        onload: () => {
-            isLoaded = true;
-            playButton.disabled = false;
-            pauseButton.disabled = false;
-            statusDiv.textContent = "Audio loaded and ready.";
-        }
-    }).connect(pitchShift);
+    audioPlayer.src = URL.createObjectURL(file);
+    statusDiv.textContent = "Audio loaded. Press play on the player.";
 });
 
-playButton.addEventListener("click", async () => {
-    if (!isLoaded) return;
-    await Tone.start();
+// Setup Web Audio routing when user hits play
+audioPlayer.addEventListener("play", async () => {
+    if (!audioCtx) {
+        audioCtx = Tone.context;
+    }
     
-    if (Tone.context.state !== "running") {
-        await Tone.context.resume();
+    if (audioCtx.state !== "running") {
+        await audioCtx.resume();
     }
 
-    if (player.state === "started") {
-        player.stop();
-    }
+    if (!isConnected) {
+        try {
+            // Connect native audio element element into Tone.js PitchShift effect graph
+            pitchShift = new Tone.PitchShift({
+                pitch: Number(pitch.value),
+                windowSize: 0.1
+            }).toDestination();
 
-    player.start();
+            sourceNode = audioCtx.createMediaElementSource(audioPlayer);
+            sourceNode.connect(pitchShift);
+            isConnected = true;
+        } catch (e) {
+            console.log("Audio routing error:", e);
+        }
+    }
+    
     statusDiv.textContent = "Playing...";
 });
 
-pauseButton.addEventListener("click", () => {
-    if (!isLoaded) return;
-    player.stop();
+audioPlayer.addEventListener("pause", () => {
     statusDiv.textContent = "Paused.";
 });
 
+// Independent Pitch Control
 pitch.addEventListener("input", function () {
     const semitones = Number(this.value);
     pitchValue.textContent = (semitones > 0 ? "+" : "") + semitones + " semitones";
@@ -249,15 +237,14 @@ pitch.addEventListener("input", function () {
     }
 });
 
+// Independent Tempo Control (Changes speed using native playbackRate without affecting pitch shift node)
 tempo.addEventListener("input", function () {
     const val = Number(this.value);
     tempoValue.textContent = val + "%";
-    
-    if (player) {
-        player.playbackRate = val / 100;
-    }
+    audioPlayer.playbackRate = val / 100;
 });
 
+// Reset Controls
 resetButton.addEventListener("click", () => {
     pitch.value = 0;
     tempo.value = 100;
@@ -265,7 +252,7 @@ resetButton.addEventListener("click", () => {
     tempoValue.textContent = "100%";
 
     if (pitchShift) pitchShift.pitch = 0;
-    if (player) player.playbackRate = 1;
+    audioPlayer.playbackRate = 1;
 
     statusDiv.textContent = "Controls reset.";
 });
