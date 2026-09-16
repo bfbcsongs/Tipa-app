@@ -59,11 +59,6 @@ input[type="file"] {
     word-break: break-word;
 }
 
-audio {
-    width: 100%;
-    margin-top: 15px;
-}
-
 .control {
     margin: 20px 0;
 }
@@ -100,11 +95,6 @@ button {
     color: white;
     font-size: 16px;
     font-weight: bold;
-    cursor: pointer;
-}
-
-button:active {
-    transform: scale(0.98);
 }
 
 button.secondary {
@@ -117,7 +107,6 @@ button.export {
 
 button:disabled {
     opacity: 0.5;
-    cursor: not-allowed;
 }
 
 .status {
@@ -127,11 +116,13 @@ button:disabled {
     min-height: 22px;
 }
 
-.note {
-    font-size: 13px;
+.info {
+    background: #334155;
+    padding: 12px;
+    border-radius: 10px;
     line-height: 1.5;
-    color: #94a3b8;
-    margin-top: 15px;
+    font-size: 14px;
+    color: #cbd5e1;
 }
 </style>
 </head>
@@ -140,242 +131,485 @@ button:disabled {
 
 <div class="container">
 
-    <h1>🎵 Audio Editor</h1>
+<h1>🎵 Audio Editor</h1>
 
-    <div class="subtitle">
-        Pitch & Tempo — Independent Control
-    </div>
-
-    <div class="card">
-
-        <input
-            type="file"
-            id="audioFile"
-            accept="audio/mpeg,audio/wav,audio/*"
-        >
-
-        <div class="song-name" id="songName">
-            No audio selected
-        </div>
-
-        <audio
-            id="audioPlayer"
-            controls
-        ></audio>
-
-    </div>
+<div class="subtitle">
+Independent Pitch & Tempo
+</div>
 
 
-    <div class="card">
+<div class="card">
 
-        <div class="control">
+<input
+    type="file"
+    id="audioFile"
+    accept="audio/mpeg,audio/wav,audio/*"
+>
 
-            <div class="control-header">
-                <span>🎼 Pitch</span>
-                <span class="control-value"
-                      id="pitchValue">
-                    0 semitones
-                </span>
-            </div>
-
-            <input
-                type="range"
-                id="pitch"
-                min="-12"
-                max="12"
-                step="1"
-                value="0"
-            >
-
-        </div>
-
-
-        <div class="control">
-
-            <div class="control-header">
-                <span>🕐 Tempo</span>
-                <span class="control-value"
-                      id="tempoValue">
-                    100%
-                </span>
-            </div>
-
-            <input
-                type="range"
-                id="tempo"
-                min="50"
-                max="150"
-                step="1"
-                value="100"
-            >
-
-        </div>
-
-    </div>
-
-
-    <div class="card">
-
-        <div class="buttons">
-
-            <button
-                id="resetButton"
-                class="secondary">
-                Reset
-            </button>
-
-            <button
-                id="exportButton"
-                class="export"
-                disabled>
-                Export Audio
-            </button>
-
-        </div>
-
-        <div
-            class="status"
-            id="status">
-            Select an audio file to begin.
-        </div>
-
-        <div class="note">
-            Pitch and tempo controls are designed as
-            independent parameters. The actual processing
-            engine will be added in the next stage.
-        </div>
-
-    </div>
+<div
+    class="song-name"
+    id="songName">
+    No audio selected
+</div>
 
 </div>
 
 
-<script>
+<div class="card">
 
-const audioFile = document.getElementById("audioFile");
-const audioPlayer = document.getElementById("audioPlayer");
+<div class="control">
 
-const songName = document.getElementById("songName");
+<div class="control-header">
+<span>🎼 Pitch</span>
 
-const pitch = document.getElementById("pitch");
-const tempo = document.getElementById("tempo");
+<span
+    class="control-value"
+    id="pitchValue">
+    0 semitones
+</span>
+</div>
 
-const pitchValue = document.getElementById("pitchValue");
-const tempoValue = document.getElementById("tempoValue");
+<input
+    type="range"
+    id="pitch"
+    min="-12"
+    max="12"
+    step="1"
+    value="0"
+>
 
-const resetButton = document.getElementById("resetButton");
-const exportButton = document.getElementById("exportButton");
-
-const status = document.getElementById("status");
-
-let audioURL = null;
-let selectedFile = null;
+</div>
 
 
-/* -------------------------
-   FILE SELECTION
-------------------------- */
+<div class="control">
 
-audioFile.addEventListener("change", function () {
+<div class="control-header">
+<span>🕐 Tempo</span>
 
-    const file = this.files[0];
+<span
+    class="control-value"
+    id="tempoValue">
+    100%
+</span>
+</div>
 
-    if (!file) {
+<input
+    type="range"
+    id="tempo"
+    min="50"
+    max="150"
+    step="1"
+    value="100"
+>
+
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="buttons">
+
+<button
+    id="playButton"
+    disabled>
+    ▶ Play
+</button>
+
+<button
+    id="stopButton"
+    class="secondary"
+    disabled>
+    ■ Stop
+</button>
+
+</div>
+
+<br>
+
+<div class="buttons">
+
+<button
+    id="resetButton"
+    class="secondary">
+    Reset
+</button>
+
+<button
+    id="exportButton"
+    class="export"
+    disabled>
+    Export
+</button>
+
+</div>
+
+<div
+    class="status"
+    id="status">
+    Select an audio file.
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="info">
+
+<b>Engine test</b><br><br>
+
+Pitch changes the musical key without intentionally
+changing the tempo.<br><br>
+
+Tempo changes playback speed without intentionally
+changing the musical key.
+
+</div>
+
+</div>
+
+</div>
+
+
+<script type="module">
+
+/*
+    SoundTouchJS
+    Browser audio processing engine
+*/
+
+import {
+    PitchShifter
+} from "https://cdn.jsdelivr.net/npm/soundtouchjs@0.3.0/dist/soundtouch.js";
+
+
+/* ELEMENTS */
+
+const audioFile =
+    document.getElementById("audioFile");
+
+const songName =
+    document.getElementById("songName");
+
+const pitch =
+    document.getElementById("pitch");
+
+const tempo =
+    document.getElementById("tempo");
+
+const pitchValue =
+    document.getElementById("pitchValue");
+
+const tempoValue =
+    document.getElementById("tempoValue");
+
+const playButton =
+    document.getElementById("playButton");
+
+const stopButton =
+    document.getElementById("stopButton");
+
+const resetButton =
+    document.getElementById("resetButton");
+
+const exportButton =
+    document.getElementById("exportButton");
+
+const status =
+    document.getElementById("status");
+
+
+/* AUDIO */
+
+const audioContext =
+    new (window.AudioContext ||
+         window.webkitAudioContext)();
+
+let audioBuffer = null;
+let shifter = null;
+
+let playing = false;
+
+
+/* LOAD FILE */
+
+audioFile.addEventListener(
+    "change",
+    async function () {
+
+        const file = this.files[0];
+
+        if (!file) {
+            return;
+        }
+
+        try {
+
+            status.textContent =
+                "Loading audio...";
+
+            songName.textContent =
+                file.name;
+
+            const arrayBuffer =
+                await file.arrayBuffer();
+
+            audioBuffer =
+                await audioContext.decodeAudioData(
+                    arrayBuffer
+                );
+
+            createShifter();
+
+            playButton.disabled = false;
+            stopButton.disabled = false;
+            exportButton.disabled = false;
+
+            status.textContent =
+                "Audio loaded successfully.";
+
+        } catch (error) {
+
+            console.error(error);
+
+            status.textContent =
+                "Could not load this audio file.";
+
+        }
+
+    }
+);
+
+
+/* CREATE PROCESSOR */
+
+function createShifter() {
+
+    if (!audioBuffer) {
         return;
     }
 
-    selectedFile = file;
+    if (shifter) {
 
-    if (audioURL) {
-        URL.revokeObjectURL(audioURL);
+        try {
+            shifter.disconnect();
+        } catch (e) {}
+
     }
 
-    audioURL = URL.createObjectURL(file);
+    /*
+        16384 = processing buffer size.
+        Larger buffer = more stable processing.
+    */
 
-    audioPlayer.src = audioURL;
-
-    songName.textContent = file.name;
-
-    exportButton.disabled = false;
-
-    status.textContent =
-        "Audio loaded successfully.";
-
-});
+    shifter =
+        new PitchShifter(
+            audioContext,
+            audioBuffer,
+            16384
+        );
 
 
-/* -------------------------
-   PITCH DISPLAY
-------------------------- */
+    /*
+        Apply current settings
+    */
 
-pitch.addEventListener("input", function () {
+    shifter.tempo =
+        Number(tempo.value) / 100;
 
-    const value = Number(this.value);
+    shifter.pitchSemitones =
+        Number(pitch.value);
 
-    if (value === 0) {
+}
+
+
+/* PLAY */
+
+playButton.addEventListener(
+    "click",
+    async function () {
+
+        if (!shifter) {
+            return;
+        }
+
+        await audioContext.resume();
+
+        /*
+            Reconnect processor
+        */
+
+        try {
+            shifter.disconnect();
+        } catch (e) {}
+
+        shifter.connect(
+            audioContext.destination
+        );
+
+        playing = true;
+
+        status.textContent =
+            "Playing processed audio...";
+
+    }
+);
+
+
+/* STOP */
+
+stopButton.addEventListener(
+    "click",
+    function () {
+
+        if (!shifter) {
+            return;
+        }
+
+        try {
+            shifter.disconnect();
+        } catch (e) {}
+
+        playing = false;
+
+        status.textContent =
+            "Stopped.";
+
+    }
+);
+
+
+/* PITCH */
+
+pitch.addEventListener(
+    "input",
+    function () {
+
+        const value =
+            Number(this.value);
+
+        if (value === 0) {
+
+            pitchValue.textContent =
+                "0 semitones";
+
+        } else if (value > 0) {
+
+            pitchValue.textContent =
+                "+" + value +
+                " semitones";
+
+        } else {
+
+            pitchValue.textContent =
+                value +
+                " semitones";
+
+        }
+
+
+        if (shifter) {
+
+            /*
+                Pitch changes only.
+            */
+
+            shifter.pitchSemitones =
+                value;
+
+            /*
+                Keep tempo exactly where
+                the user selected it.
+            */
+
+            shifter.tempo =
+                Number(tempo.value) / 100;
+
+        }
+
+    }
+);
+
+
+/* TEMPO */
+
+tempo.addEventListener(
+    "input",
+    function () {
+
+        const value =
+            Number(this.value);
+
+        tempoValue.textContent =
+            value + "%";
+
+
+        if (shifter) {
+
+            /*
+                Tempo changes only.
+            */
+
+            shifter.tempo =
+                value / 100;
+
+            /*
+                Re-apply pitch so the
+                selected key remains active.
+            */
+
+            shifter.pitchSemitones =
+                Number(pitch.value);
+
+        }
+
+    }
+);
+
+
+/* RESET */
+
+resetButton.addEventListener(
+    "click",
+    function () {
+
+        pitch.value = 0;
+        tempo.value = 100;
+
         pitchValue.textContent =
             "0 semitones";
+
+        tempoValue.textContent =
+            "100%";
+
+
+        if (shifter) {
+
+            shifter.pitchSemitones = 0;
+            shifter.tempo = 1;
+
+        }
+
+        status.textContent =
+            "Settings reset.";
+
     }
-    else if (value > 0) {
-        pitchValue.textContent =
-            "+" + value + " semitones";
+);
+
+
+/* EXPORT PLACEHOLDER */
+
+exportButton.addEventListener(
+    "click",
+    function () {
+
+        status.textContent =
+            "Export engine is the next stage.";
+
     }
-    else {
-        pitchValue.textContent =
-            value + " semitones";
-    }
-
-});
-
-
-/* -------------------------
-   TEMPO DISPLAY
-------------------------- */
-
-tempo.addEventListener("input", function () {
-
-    tempoValue.textContent =
-        this.value + "%";
-
-});
-
-
-/* -------------------------
-   RESET
-------------------------- */
-
-resetButton.addEventListener("click", function () {
-
-    pitch.value = 0;
-    tempo.value = 100;
-
-    pitchValue.textContent =
-        "0 semitones";
-
-    tempoValue.textContent =
-        "100%";
-
-    status.textContent =
-        "Controls reset.";
-
-});
-
-
-/* -------------------------
-   EXPORT
-------------------------- */
-
-exportButton.addEventListener("click", function () {
-
-    if (!selectedFile) {
-        return;
-    }
-
-    status.textContent =
-        "Export engine coming in the next stage.";
-
-});
-
+);
 
 </script>
 
