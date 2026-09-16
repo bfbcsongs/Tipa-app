@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Audio Editor</title>
+
+<!-- Include Tone.js for independent pitch and tempo processing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
 <style>
 * {
@@ -59,35 +59,11 @@ input[type="file"] {
     word-break: break-word;
 }
 
-audio {
-    width: 100%;
-    margin-top: 15px;
-}
-
-.control {
-    margin: 20px 0;
-}
-
-.control-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.control-value {
-    font-weight: bold;
-    font-size: 18px;
-}
-
-input[type="range"] {
-    width: 100%;
-}
-
 .buttons {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
+    margin-top: 15px;
 }
 
 button {
@@ -111,13 +87,29 @@ button.secondary {
     background: #475569;
 }
 
-button.export {
-    background: #16a34a;
-}
-
 button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.control {
+    margin: 20px 0;
+}
+
+.control-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.control-value {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+input[type="range"] {
+    width: 100%;
 }
 
 .status {
@@ -125,13 +117,6 @@ button:disabled {
     color: #94a3b8;
     margin-top: 15px;
     min-height: 22px;
-}
-
-.note {
-    font-size: 13px;
-    line-height: 1.5;
-    color: #94a3b8;
-    margin-top: 15px;
 }
 </style>
 </head>
@@ -147,236 +132,143 @@ button:disabled {
     </div>
 
     <div class="card">
-
-        <input
-            type="file"
-            id="audioFile"
-            accept="audio/mpeg,audio/wav,audio/*"
-        >
-
-        <div class="song-name" id="songName">
-            No audio selected
+        <input type="file" id="audioFile" accept="audio/mpeg,audio/wav,audio/*">
+        <div class="song-name" id="songName">No audio selected</div>
+        
+        <div class="buttons">
+            <button id="playButton" disabled>Play</button>
+            <button id="pauseButton" class="secondary" disabled>Pause</button>
         </div>
-
-        <audio
-            id="audioPlayer"
-            controls
-        ></audio>
-
     </div>
 
-
     <div class="card">
-
         <div class="control">
-
             <div class="control-header">
                 <span>🎼 Pitch</span>
-                <span class="control-value"
-                      id="pitchValue">
-                    0 semitones
-                </span>
+                <span class="control-value" id="pitchValue">0 semitones</span>
             </div>
-
-            <input
-                type="range"
-                id="pitch"
-                min="-12"
-                max="12"
-                step="1"
-                value="0"
-            >
-
+            <input type="range" id="pitch" min="-12" max="12" step="1" value="0">
         </div>
-
 
         <div class="control">
-
             <div class="control-header">
                 <span>🕐 Tempo</span>
-                <span class="control-value"
-                      id="tempoValue">
-                    100%
-                </span>
+                <span class="control-value" id="tempoValue">100%</span>
             </div>
-
-            <input
-                type="range"
-                id="tempo"
-                min="50"
-                max="150"
-                step="1"
-                value="100"
-            >
-
+            <input type="range" id="tempo" min="50" max="150" step="1" value="100">
         </div>
-
     </div>
 
-
     <div class="card">
-
         <div class="buttons">
-
-            <button
-                id="resetButton"
-                class="secondary">
-                Reset
-            </button>
-
-            <button
-                id="exportButton"
-                class="export"
-                disabled>
-                Export Audio
-            </button>
-
+            <button id="resetButton" class="secondary">Reset</button>
         </div>
-
-        <div
-            class="status"
-            id="status">
-            Select an audio file to begin.
-        </div>
-
-        <div class="note">
-            Pitch and tempo controls are designed as
-            independent parameters. The actual processing
-            engine will be added in the next stage.
-        </div>
-
+        <div class="status" id="status">Select an audio file to begin.</div>
     </div>
 
 </div>
 
-
 <script>
+let player = null;
+let pitchShift = null;
+let isLoaded = false;
 
 const audioFile = document.getElementById("audioFile");
-const audioPlayer = document.getElementById("audioPlayer");
-
 const songName = document.getElementById("songName");
-
+const playButton = document.getElementById("playButton");
+const pauseButton = document.getElementById("pauseButton");
 const pitch = document.getElementById("pitch");
 const tempo = document.getElementById("tempo");
-
 const pitchValue = document.getElementById("pitchValue");
 const tempoValue = document.getElementById("tempoValue");
-
 const resetButton = document.getElementById("resetButton");
-const exportButton = document.getElementById("exportButton");
+const statusDiv = document.getElementById("status");
 
-const status = document.getElementById("status");
-
-let audioURL = null;
-let selectedFile = null;
-
-
-/* -------------------------
-   FILE SELECTION
-------------------------- */
-
-audioFile.addEventListener("change", function () {
-
+audioFile.addEventListener("change", async function () {
     const file = this.files[0];
-
-    if (!file) {
-        return;
-    }
-
-    selectedFile = file;
-
-    if (audioURL) {
-        URL.revokeObjectURL(audioURL);
-    }
-
-    audioURL = URL.createObjectURL(file);
-
-    audioPlayer.src = audioURL;
+    if (!file) return;
 
     songName.textContent = file.name;
+    statusDiv.textContent = "Loading audio...";
 
-    exportButton.disabled = false;
+    // Start Tone audio context on user interaction
+    await Tone.start();
 
-    status.textContent =
-        "Audio loaded successfully.";
+    const fileURL = URL.createObjectURL(file);
 
+    if (player) {
+        player.dispose();
+    }
+    if (pitchShift) {
+        pitchShift.dispose();
+    }
+
+    // Create PitchShift effect node
+    pitchShift = new Tone.PitchShift({
+        pitch: 0,
+        windowSize: 0.1,
+        delayTime: 0,
+        feedback: 0
+    }).toDestination();
+
+    // Create Tone Player
+    player = new Tone.Player({
+        url: fileURL,
+        autostart: false,
+        loop: true,
+        onload: () => {
+            isLoaded = true;
+            playButton.disabled = false;
+            pauseButton.disabled = false;
+            statusDiv.textContent = "Audio loaded and ready.";
+        }
+    }).connect(pitchShift);
 });
 
+playButton.addEventListener("click", async () => {
+    if (!isLoaded) return;
+    await Tone.start();
+    Tone.Transport.start();
+    player.start();
+    statusDiv.textContent = "Playing...";
+});
 
-/* -------------------------
-   PITCH DISPLAY
-------------------------- */
+pauseButton.addEventListener("click", () => {
+    if (!isLoaded) return;
+    player.stop();
+    statusDiv.textContent = "Paused.";
+});
 
 pitch.addEventListener("input", function () {
-
-    const value = Number(this.value);
-
-    if (value === 0) {
-        pitchValue.textContent =
-            "0 semitones";
+    const semitones = Number(this.value);
+    pitchValue.textContent = (semitones > 0 ? "+" : "") + semitones + " semitones";
+    
+    if (pitchShift) {
+        pitchShift.pitch = semitones;
     }
-    else if (value > 0) {
-        pitchValue.textContent =
-            "+" + value + " semitones";
-    }
-    else {
-        pitchValue.textContent =
-            value + " semitones";
-    }
-
 });
-
-
-/* -------------------------
-   TEMPO DISPLAY
-------------------------- */
 
 tempo.addEventListener("input", function () {
-
-    tempoValue.textContent =
-        this.value + "%";
-
+    const val = Number(this.value);
+    tempoValue.textContent = val + "%";
+    
+    if (player) {
+        // Playback rate controls speed (tempo) without changing pitch in Tone.Player
+        player.playbackRate = val / 100;
+    }
 });
 
-
-/* -------------------------
-   RESET
-------------------------- */
-
-resetButton.addEventListener("click", function () {
-
+resetButton.addEventListener("click", () => {
     pitch.value = 0;
     tempo.value = 100;
+    pitchValue.textContent = "0 semitones";
+    tempoValue.textContent = "100%";
 
-    pitchValue.textContent =
-        "0 semitones";
+    if (pitchShift) pitchShift.pitch = 0;
+    if (player) player.playbackRate = 1;
 
-    tempoValue.textContent =
-        "100%";
-
-    status.textContent =
-        "Controls reset.";
-
+    statusDiv.textContent = "Controls reset.";
 });
-
-
-/* -------------------------
-   EXPORT
-------------------------- */
-
-exportButton.addEventListener("click", function () {
-
-    if (!selectedFile) {
-        return;
-    }
-
-    status.textContent =
-        "Export engine coming in the next stage.";
-
-});
-
-
 </script>
 
 </body>
