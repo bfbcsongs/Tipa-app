@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Audio Editor</title>
 
-<!-- Include Tone.js for independent pitch and tempo processing -->
+<!-- Include Tone.js library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
 <style>
@@ -132,7 +132,7 @@ input[type="range"] {
     </div>
 
     <div class="card">
-        <input type="file" id="audioFile" accept="audio/mpeg,audio/wav,audio/*">
+        <input type="file" id="audioFile" accept="audio/*">
         <div class="song-name" id="songName">No audio selected</div>
         
         <div class="buttons">
@@ -191,31 +191,24 @@ audioFile.addEventListener("change", async function () {
     songName.textContent = file.name;
     statusDiv.textContent = "Loading audio...";
 
-    // Start Tone audio context on user interaction
     await Tone.start();
 
     const fileURL = URL.createObjectURL(file);
 
-    if (player) {
-        player.dispose();
-    }
-    if (pitchShift) {
-        pitchShift.dispose();
-    }
+    if (player) player.dispose();
+    if (pitchShift) pitchShift.dispose();
 
-    // Create PitchShift effect node
+    // Create a pitch shift effect node
     pitchShift = new Tone.PitchShift({
-        pitch: 0,
-        windowSize: 0.1,
-        delayTime: 0,
-        feedback: 0
+        pitch: Number(pitch.value),
+        windowSize: 0.1
     }).toDestination();
 
-    // Create Tone Player
+    // Create player and connect to pitch shifter
     player = new Tone.Player({
         url: fileURL,
-        autostart: false,
         loop: true,
+        playbackRate: Number(tempo.value) / 100,
         onload: () => {
             isLoaded = true;
             playButton.disabled = false;
@@ -228,7 +221,15 @@ audioFile.addEventListener("change", async function () {
 playButton.addEventListener("click", async () => {
     if (!isLoaded) return;
     await Tone.start();
-    Tone.Transport.start();
+    
+    if (Tone.context.state !== "running") {
+        await Tone.context.resume();
+    }
+
+    if (player.state === "started") {
+        player.stop();
+    }
+
     player.start();
     statusDiv.textContent = "Playing...";
 });
@@ -253,7 +254,6 @@ tempo.addEventListener("input", function () {
     tempoValue.textContent = val + "%";
     
     if (player) {
-        // Playback rate controls speed (tempo) without changing pitch in Tone.Player
         player.playbackRate = val / 100;
     }
 });
